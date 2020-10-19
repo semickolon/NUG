@@ -59,4 +59,27 @@ namespace NUG.Tests
       Assert.That(_a + _b == _sum);
     }
   }
+
+  [TestFixture]
+  public class TestAbstractFixture
+  {
+    protected virtual int CreateNaturalNumber() => 4;
+
+    [Test]
+    public void IsNaturalNumber()
+    {
+      var n = CreateNaturalNumber();
+      Assert.That(n > 0);
+    }
+  }
+
+  public class TestAbstractFixture1 : TestAbstractFixture
+  {
+    protected override int CreateNaturalNumber() => 99;
+  }
+
+  public class TestAbstractFixture2 : TestAbstractFixture
+  {
+    protected override int CreateNaturalNumber() => 189322;
+  }
 }

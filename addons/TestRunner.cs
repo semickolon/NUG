@@ -153,12 +153,12 @@ namespace NUG
     
     private static T? GetCustomAttribute<T>(MemberInfo type) where T : Attribute
     {
-      return Attribute.GetCustomAttribute(type, typeof(T), false) as T;
+      return Attribute.GetCustomAttribute(type, typeof(T)) as T;
     }
     
     private static T[] GetCustomAttributes<T>(MemberInfo type) where T : Attribute
     {
-      return (T[]) Attribute.GetCustomAttributes(type, typeof(T), false);
+      return (T[]) Attribute.GetCustomAttributes(type, typeof(T));
     }
   }
 
