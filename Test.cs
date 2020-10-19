@@ -314,4 +314,97 @@ namespace NUG.Tests
       nums.Add(2);
     }
   }
+
+  [TestFixture]
+  public class TestOneTimeSetupTeardown
+  {
+    private static int _a = 0;
+    
+    [OneTimeSetUp]
+    public void SetupOnce()
+    {
+      _a++;
+    }
+
+    [OneTimeTearDown]
+    public void TeardownOnce()
+    {
+      _a--;
+      Assert.AreEqual(0, _a);
+    }
+
+    [Test]
+    public void CheckA()
+    {
+      Assert.AreEqual(1, _a);
+    }
+
+    [Test]
+    public void CheckB()
+    {
+      Assert.AreEqual(2 - 1, _a);
+    }
+
+    [Test]
+    public void CheckC()
+    {
+      Assert.AreEqual(42 - 43 + 2, _a);
+    }
+  }
+
+  [TestFixture(3)]
+  [TestFixture(20)]
+  [TestFixture(-1337)]
+  public class TestOneTimeSetupTeardownMultipleFixtures
+  {
+    private static int _a = 0;
+    private static int _b = 0;
+    
+    private int _n = 1;
+    private readonly int _multiple = 0;
+
+    public TestOneTimeSetupTeardownMultipleFixtures(int multiple)
+    {
+      _multiple = multiple;
+    }
+
+    [OneTimeSetUp]
+    public void SetupOnce()
+    {
+      _a += 23;
+      _b++;
+    }
+
+    [OneTimeTearDown]
+    public void TeardownOnce()
+    {
+      Assert.AreEqual(23 * _b, _a);
+    }
+
+    [SetUp]
+    public void Setup()
+    {
+      _n--;
+      _n += _multiple;
+      _a--;
+    }
+
+    [TearDown]
+    public void Teardown()
+    {
+      _a++;
+    }
+    
+    [Test]
+    public void IsMultipleA() 
+    {
+      Assert.That(_n % _multiple == 0);
+    }
+    
+    [Test]
+    public void IsMultipleB() 
+    {
+      Assert.That(_n % _multiple == 0);
+    }
+  }
 }
