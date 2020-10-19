@@ -145,4 +145,29 @@ namespace NUG.Tests
       Assert.That(_n * a > 0);
     }
   }
+
+  [TestFixture]
+  public class TestSetupTeardown
+  {
+    private int _n = 0;
+    
+    [SetUp]
+    public void Setup()
+    {
+      _n = 1;
+    }
+
+    [Test]
+    public void IsNumberOne()
+    {
+      Assert.That(_n == 1);
+      _n = 2;
+    }
+
+    [TearDown]
+    public void Teardown()
+    {
+      Assert.That(_n == 2);
+    }
+  }
 }
