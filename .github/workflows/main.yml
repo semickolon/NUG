@@ -29,5 +29,5 @@ jobs:
       
       - name: Run CliTestRunner (all tests)
         run: |
-          ./godot -e -q --build-solutions
-          ./godot -s addons/NUG/CliTestRunner.cs
+          chmod +x run_all_tests.sh
+          ./run_all_tests.sh

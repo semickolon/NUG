@@ -10,5 +10,6 @@
   <ItemGroup>
     <Content Include=".gitignore" />
     <Content Include="LICENSE" />
+    <Content Include="run_all_tests.sh" />
   </ItemGroup>
 </Project>

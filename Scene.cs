@@ -15,7 +15,7 @@ namespace NUG.Tests
         var name = $"{res.TestMethod.DeclaringType!.Name}.{res.TestMethod.Name}";
         if (res.Exception != null)
         {
-          GD.Print($"Failed {name} : {res.Exception.Message}");
+          GD.PrintErr($"Failed {name}\n{res.Exception.Message}");
         }
         else
         {
