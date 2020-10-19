@@ -1,4 +1,5 @@
-﻿using NUnit.Framework;
+﻿using System.Collections.Generic;
+using NUnit.Framework;
 
 namespace NUG.Tests
 {
@@ -254,6 +255,63 @@ namespace NUG.Tests
     public void TearDownB()
     {
       Assert.AreEqual(25, _b);
+    }
+  }
+  
+  [TestFixture] // Order intentionally messed up to make sure pass isn't a fluke
+  public class TestSubDerivedSetupTeardown : TestDerivedSetupTeardown
+  {
+    [Test]
+    public void IsSetupOrderCorrect()
+    {
+      Assert.AreEqual(new List<int> {0, 1, 2, 3}, nums);
+    }
+
+    [TearDown]
+    public void SubDerivedTeardown()
+    {
+      nums.Add(4);
+      Assert.AreEqual(new List<int> {0, 1, 2, 3, 4}, nums);
+    }
+    
+    [SetUp]
+    public void SubDerivedSetup()
+    {
+      nums.Add(3);
+    }
+  }
+
+  public class TestBaseSetupTeardown
+  {
+    protected static List<int> nums = new List<int> { 0 };
+
+    [SetUp]
+    public void BaseSetup()
+    {
+      nums.Add(1);
+    }
+      
+    [TearDown]
+    public void BaseTeardown()
+    {
+      nums.Add(6);
+      Assert.AreEqual(new List<int> { 0, 1, 2, 3, 4, 5, 6 }, nums);
+    }
+  }
+
+  public class TestDerivedSetupTeardown : TestBaseSetupTeardown
+  {
+    [TearDown]
+    public void DerivedTeardown()
+    {
+      nums.Add(5);
+      Assert.AreEqual(new List<int> { 0, 1, 2, 3, 4, 5 }, nums);
+    }
+    
+    [SetUp]
+    public void DerivedSetup()
+    {
+      nums.Add(2);
     }
   }
 }

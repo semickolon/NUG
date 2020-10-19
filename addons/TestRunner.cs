@@ -104,7 +104,7 @@ namespace NUG
           var constructor = TryGetConstructor(concreteType, testFixtureAttr.Arguments);
           if (constructor == null)
             continue; // TODO really?
-          
+
           var methods = concreteType.GetMethods();
           var testCases = new List<TestCase>();
           
@@ -119,8 +119,11 @@ namespace NUG
           if (testCases.Count == 0)
             continue;
           
-          testCases.Sort((a, b) => a.Order - b.Order);
+          testCases.Sort((x, y) => x.Order - y.Order);
           _testCases[concreteType] = testCases;
+          
+          _setupMethods.TryGetValue(concreteType)?.Sort(new MethodHierarchyComparer());
+          _teardownMethods.TryGetValue(concreteType)?.Sort(new MethodHierarchyComparer(true));
         }
       }
     }
@@ -257,6 +260,35 @@ namespace NUG
       }
 
       return dict[key];
+    }
+
+    public static TValue? TryGetValue<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key)
+      where TValue : class
+    {
+      return dict.ContainsKey(key) ? dict[key] : null;
+    }
+  }
+
+  public class MethodHierarchyComparer : IComparer<MethodInfo>
+  {
+    private readonly bool _reverse;
+
+    public MethodHierarchyComparer(bool reverse = false)
+    {
+      _reverse = reverse;
+    }
+
+    public int Compare(MethodInfo x, MethodInfo y)
+    {
+      var xt = x.DeclaringType!;
+      var yt = y.DeclaringType!;
+
+      if (xt == yt)
+        return 0;
+
+      var c = xt.IsSubclassOf(yt) ? 1 : -1;
+      c *= _reverse ? -1 : 1;
+      return c;
     }
   }
 }
