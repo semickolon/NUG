@@ -12,7 +12,7 @@ namespace NUG
   public class TestRunner
   {
     private readonly SceneTree _sceneTree;
-    private readonly Dictionary<MethodInfo, List<TestPayload>> _testMethods = new Dictionary<MethodInfo, List<TestPayload>>();
+    private readonly Dictionary<Type, List<TestCase>> _testCases = new Dictionary<Type, List<TestCase>>();
     private readonly Dictionary<Type, MethodInfo> _setupMethods = new Dictionary<Type, MethodInfo>();
     private readonly Dictionary<Type, MethodInfo> _teardownMethods = new Dictionary<Type, MethodInfo>();
 
@@ -24,21 +24,23 @@ namespace NUG
 
     public async Task Run(Action<TestResult> callback)
     {
-      foreach (var method in _testMethods.Keys)
+      foreach (var type in _testCases.Keys)
       {
-        var testPayloads = _testMethods[method]!;
-        foreach (var testPayload in testPayloads)
+        var testCases = _testCases[type]!;
+        foreach (var testCase in testCases)
         {
-          var testResult = await RunTest(method, testPayload);
+          var testResult = await RunTestCase(testCase);
           callback(testResult);
         }
       }
     }
 
-    private async Task<TestResult> RunTest(MethodInfo method, TestPayload testPayload)
+    private async Task<TestResult> RunTestCase(TestCase testCase)
     {
+      var method = testCase.Method;
+      var testObject = testCase.TestObject;
+      
       var testResult = new TestResult(method);
-      var testObject = testPayload.TestObject;
       
       try
       {
@@ -50,7 +52,7 @@ namespace NUG
         _setupMethods.TryGetValue(method.DeclaringType, out var setupMethod);
         setupMethod?.Invoke(testObject, new object[] { });
 
-        object obj = method.Invoke(testObject, testPayload.Parameters);
+        object obj = method.Invoke(testObject, testCase.Parameters);
 
         if (obj is IEnumerator coroutine)
         {
@@ -101,21 +103,31 @@ namespace NUG
           var constructor = TryGetConstructor(concreteType, testFixtureAttr.Arguments);
           if (constructor == null)
             continue; // TODO really?
-
-          object CreateTestObject() => constructor.Invoke(testFixtureAttr.Arguments);
-
+          
           var methods = concreteType.GetMethods();
+          var testCases = new List<TestCase>();
+          
+          object CreateTestObject() => constructor.Invoke(testFixtureAttr.Arguments);
+          
           foreach (var method in methods)
           {
-            ScanMethod(concreteType, method, CreateTestObject);
+            var testCase = ScanMethod(concreteType, method, CreateTestObject);
+            testCase?.With(x => testCases.Add(x));
+          }
+
+          if (testCases.Count > 0)
+          {
+            testCases.Sort((a, b) => a.Order - b.Order);
+            _testCases[concreteType] = testCases;
           }
         }
       }
     }
 
-    private void ScanMethod(Type type, MethodInfo method, Func<object> createTestObject)
+    private TestCase? ScanMethod(Type type, MethodInfo method, Func<object> createTestObject)
     {
       var testCaseAttrs = GetCustomAttributes<TestCaseAttribute>(method).ToList();
+      var orderAttr = GetCustomAttribute<OrderAttribute>(method);
       var setupAttr = GetCustomAttribute<SetUpAttribute>(method);
       var teardownAttr = GetCustomAttribute<TearDownAttribute>(method);
 
@@ -133,26 +145,21 @@ namespace NUG
         {
           var testAttr = GetCustomAttribute<TestAttribute>(method);
           var testCaseAttr = testAttr?.ToTestCaseAttribute();
-          if (testCaseAttr != null)
-          {
-            testCaseAttrs.Add(testCaseAttr);
-          }
+          testCaseAttr?.With(x => testCaseAttrs.Add(x));
         }
         
         foreach (var testCaseAttr in testCaseAttrs)
         {
           if (testCaseAttr == null || testCaseAttr.Ignore != null)
-            return;
-        
-          if (!_testMethods.ContainsKey(method))
-          {
-            _testMethods[method] = new List<TestPayload>();
-          }
+            return null;
 
-          var testPayload = new TestPayload(createTestObject(), testCaseAttr.Arguments);
-          _testMethods[method].Add(testPayload);
+          var order = orderAttr?.Order ?? Int32.MaxValue;
+          var testPayload = new TestCase(method, createTestObject(), testCaseAttr.Arguments, order);
+          return testPayload;
         }
       }
+
+      return null;
     }
 
     private static ConstructorInfo? TryGetConstructor(Type type, object[] args)
@@ -200,15 +207,19 @@ namespace NUG
     }
   }
 
-  public readonly struct TestPayload
+  public readonly struct TestCase
   {
+    public readonly MethodInfo Method;
     public readonly object TestObject;
     public readonly object[] Parameters;
+    public readonly int Order;
 
-    public TestPayload(object testObject, object[] parameters)
+    public TestCase(MethodInfo method, object testObject, object[] parameters, int order)
     {
+      Method = method;
       TestObject = testObject;
       Parameters = parameters;
+      Order = order;
     }
   }
 
@@ -217,20 +228,19 @@ namespace NUG
     public static TestCaseAttribute ToTestCaseAttribute(this TestAttribute testAttr)
     {
       var testCaseAttr = new TestCaseAttribute();
-
-      if (testAttr.Author != null)
-        testCaseAttr.Author = testAttr.Author;
-
-      if (testAttr.Description != null)
-        testCaseAttr.Description = testAttr.Description;
-
-      if (testAttr.ExpectedResult != null)
-        testCaseAttr.ExpectedResult = testAttr.ExpectedResult;
-
-      if (testAttr.TestOf != null)
-        testCaseAttr.TestOf = testAttr.TestOf;
-        
+      testAttr.Author?.With(x => testCaseAttr.Author = x);
+      testAttr.Description?.With(x => testCaseAttr.Description = x);
+      testAttr.ExpectedResult?.With(x => testCaseAttr.ExpectedResult = x);
+      testAttr.TestOf?.With(x => testCaseAttr.TestOf = x);
       return testCaseAttr;
+    }
+  }
+
+  public static class GeneralExtensions
+  {
+    public static void With<T>(this T t, Action<T> action)
+    {
+      action(t);
     }
   }
 }
