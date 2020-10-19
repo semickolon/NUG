@@ -23,9 +23,11 @@ jobs:
         run: |
           wget -q https://downloads.tuxfamily.org/godotengine/3.2.3/mono/Godot_v3.2.3-stable_mono_linux_headless_64.zip
           unzip Godot_v3.2.3-stable_mono_linux_headless_64.zip
-          mv Godot_v3.1-stable_linux_headless.64 godot
+          mv Godot_v3.2.3-stable_mono_linux_headless_64/* .
+          mv Godot_v3.2.3-stable_mono_linux_headless.64 godot
           chmod +x godot
       
       - name: Run CliTestRunner (all tests)
         run: |
-          ./godot --no-window -s addons/NUG/CliTestRunner.cs
+          ./godot -e -q --build-solutions
+          ./godot -s addons/NUG/CliTestRunner.cs
