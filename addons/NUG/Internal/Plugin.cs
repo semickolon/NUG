@@ -1,7 +1,6 @@
 using Godot;
-using System;
 
-namespace NUG
+namespace NUG.Internal
 {
   [Tool]
   public class Plugin : EditorPlugin

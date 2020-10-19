@@ -1,5 +1,7 @@
 #!/bin/bash
 
+rm .nugout.txt
+
 GODOT=$(command -v godot)
 
 if [ $? -eq 1 ]
@@ -8,7 +10,7 @@ then
 fi
 
 "$GODOT" --no-window -q --build-solutions
-"$GODOT" --no-window -q -s addons/NUG/CliTestRunner.cs
+"$GODOT" --no-window -q -s addons/NUG/Internal/CliTestRunner.cs
 
 if [ $? -eq 0 ]
 then

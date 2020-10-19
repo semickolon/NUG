@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using NUG.Internal;
+using TestContext = NUG.Internal.TestContext;
 
 namespace NUG
 {
@@ -220,130 +222,6 @@ namespace NUG
       testAttr.ExpectedResult?.With(x => testCaseAttr.ExpectedResult = x);
       testAttr.TestOf?.With(x => testCaseAttr.TestOf = x);
       return testCaseAttr;
-    }
-  }
-
-  public readonly struct TestResult
-  {
-    public readonly MethodInfo TestMethod;
-    public readonly Exception? Exception;
-
-    public Type ClassType => TestMethod.DeclaringType!;
-    public bool Passed => Exception == null;
-
-    public TestResult(MethodInfo testMethod, Exception? exception = null)
-    {
-      TestMethod = testMethod;
-      Exception = exception;
-    }
-  }
-
-  public readonly struct TestContext
-  {
-    public readonly Type Type;
-    public readonly Func<object> CreateTestObject;
-
-    public TestContext(Type type, Func<object> createTestObject)
-    {
-      Type = type;
-      CreateTestObject = createTestObject;
-    }
-  }
-
-  public readonly struct TestCase
-  {
-    public readonly MethodInfo Method;
-    public readonly object[] Parameters;
-    public readonly object? ExpectedResult;
-    public readonly int Order;
-
-    public TestCase(MethodInfo method, object[] parameters, object? expectedResult, int order)
-    {
-      Method = method;
-      Parameters = parameters;
-      ExpectedResult = expectedResult;
-      Order = order;
-    }
-  }
-
-  public static class GeneralExtensions
-  {
-    public static void With<T>(this T t, Action<T> action)
-    {
-      action(t);
-    }
-  }
-
-  public class MethodRegistry
-  {
-    private readonly Dictionary<TestContext, List<MethodInfo>> _store = new Dictionary<TestContext, List<MethodInfo>>();
-    private readonly HashSet<TestContext> _dirtySet = new HashSet<TestContext>();
-    private readonly bool _reverseCallOrder;
-
-    public MethodRegistry(bool reverseCallOrder = false)
-    {
-      _reverseCallOrder = reverseCallOrder;
-    }
-    
-    public void InvokeAll(TestContext context, object? testObject = null)
-    {
-      GetMethods(context)?.ForEach(m =>
-      {
-        m.Invoke(testObject ?? context.CreateTestObject(), new object[] {});
-      });
-    }
-
-    public void AddMethod(TestContext context, MethodInfo method)
-    {
-      if (!_store.ContainsKey(context))
-      {
-        _store[context] = new List<MethodInfo>();
-      }
-      
-      _store[context].Add(method);
-      SetDirty(context);
-    }
-
-    private List<MethodInfo>? GetMethods(TestContext context)
-    {
-      if (!_store.ContainsKey(context))
-        return null;
-
-      if (IsDirty(context))
-      {
-        SortFor(context);
-      }
-
-      return _store[context];
-    }
-    
-    private bool IsDirty(TestContext context)
-    {
-      return _dirtySet.Contains(context);
-    }
-
-    private void SetDirty(TestContext context)
-    {
-      _dirtySet.Add(context);
-    }
-
-    private void SortFor(TestContext context)
-    {
-      _store[context].Sort(CompareByHierarchy);
-      _dirtySet.Remove(context);
-    }
-    
-    private int CompareByHierarchy(MethodInfo x, MethodInfo y)
-    {
-      var xt = x.DeclaringType!;
-      var yt = y.DeclaringType!;
-
-      if (xt == yt)
-        return 0;
-
-      var c = xt.IsSubclassOf(yt) ? 1 : -1;
-      c *= _reverseCallOrder ? -1 : 1;
-      return c;
     }
   }
 }

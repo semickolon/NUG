@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Godot;
 
-namespace NUG
+namespace NUG.Internal
 {
   public class CliTestRunner : SceneTree
   {
