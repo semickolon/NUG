@@ -13,8 +13,8 @@ namespace NUG
   {
     private readonly SceneTree _sceneTree;
     private readonly Dictionary<Type, List<TestCase>> _testCases = new Dictionary<Type, List<TestCase>>();
-    private readonly Dictionary<Type, MethodInfo> _setupMethods = new Dictionary<Type, MethodInfo>();
-    private readonly Dictionary<Type, MethodInfo> _teardownMethods = new Dictionary<Type, MethodInfo>();
+    private readonly Dictionary<Type, List<MethodInfo>> _setupMethods = new Dictionary<Type, List<MethodInfo>>();
+    private readonly Dictionary<Type, List<MethodInfo>> _teardownMethods = new Dictionary<Type, List<MethodInfo>>();
 
     public TestRunner(SceneTree sceneTree)
     {
@@ -48,8 +48,8 @@ namespace NUG
           _sceneTree.Root.AddChild(node);
         }
 
-        _setupMethods.TryGetValue(method.DeclaringType, out var setupMethod);
-        setupMethod?.Invoke(testObject, new object[] { });
+        _setupMethods.TryGetValue(method.DeclaringType, out var setupMethods);
+        setupMethods?.ForEach(x => x.Invoke(testObject, new object[] { }));
 
         object obj = method.Invoke(testObject, testCase.Parameters);
 
@@ -69,8 +69,8 @@ namespace NUG
       }
       finally
       {
-        _teardownMethods.TryGetValue(method.DeclaringType, out var teardownMethod);
-        teardownMethod?.Invoke(testObject, new object[] { });
+        _teardownMethods.TryGetValue(method.DeclaringType, out var teardownMethods);
+        teardownMethods?.ForEach(x => x.Invoke(testObject, new object[] { }));
 
         (testObject as Node)?.QueueFree();
       }
@@ -116,11 +116,11 @@ namespace NUG
             testCase?.With(x => testCases.Add(x));
           }
 
-          if (testCases.Count > 0)
-          {
-            testCases.Sort((a, b) => a.Order - b.Order);
-            _testCases[concreteType] = testCases;
-          }
+          if (testCases.Count == 0)
+            continue;
+          
+          testCases.Sort((a, b) => a.Order - b.Order);
+          _testCases[concreteType] = testCases;
         }
       }
     }
@@ -134,11 +134,11 @@ namespace NUG
 
       if (setupAttr != null)
       {
-        _setupMethods[type] = method;
+        _setupMethods.ValueOrNew(type).Add(method);
       }
       else if (teardownAttr != null)
       {
-        _teardownMethods[type] = method;
+        _teardownMethods.ValueOrNew(type).Add(method);
       }
       else
       {
@@ -246,6 +246,17 @@ namespace NUG
     public static void With<T>(this T t, Action<T> action)
     {
       action(t);
+    }
+
+    public static TValue ValueOrNew<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key)
+      where TValue : new()
+    {
+      if (!dict.ContainsKey(key))
+      {
+        dict[key] = new TValue();
+      }
+
+      return dict[key];
     }
   }
 }
