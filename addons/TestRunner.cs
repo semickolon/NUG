@@ -39,7 +39,6 @@ namespace NUG
     {
       var method = testCase.Method;
       var testObject = testCase.TestObject;
-      
       var testResult = new TestResult(method);
       
       try
@@ -61,6 +60,8 @@ namespace NUG
             await Task.Delay(10);
           }
         }
+
+        testCase.ExpectedResult?.With(x => Assert.AreEqual(x, obj));
       }
       catch (Exception e)
       {
@@ -150,11 +151,13 @@ namespace NUG
         
         foreach (var testCaseAttr in testCaseAttrs)
         {
-          if (testCaseAttr == null || testCaseAttr.Ignore != null)
+          if (testCaseAttr == null || testCaseAttr.Ignore != null || testCaseAttr.IgnoreReason != null)
             return null;
 
-          var order = orderAttr?.Order ?? Int32.MaxValue;
-          var testPayload = new TestCase(method, createTestObject(), testCaseAttr.Arguments, order);
+          var order = orderAttr?.Order ?? int.MaxValue;
+          var testPayload = new TestCase(method, createTestObject(), 
+            testCaseAttr.Arguments, testCaseAttr.ExpectedResult, order);
+          
           return testPayload;
         }
       }
@@ -212,13 +215,15 @@ namespace NUG
     public readonly MethodInfo Method;
     public readonly object TestObject;
     public readonly object[] Parameters;
+    public readonly object? ExpectedResult;
     public readonly int Order;
 
-    public TestCase(MethodInfo method, object testObject, object[] parameters, int order)
+    public TestCase(MethodInfo method, object testObject, object[] parameters, object? expectedResult, int order)
     {
       Method = method;
       TestObject = testObject;
       Parameters = parameters;
+      ExpectedResult = expectedResult;
       Order = order;
     }
   }

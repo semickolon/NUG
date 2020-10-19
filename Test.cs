@@ -56,7 +56,7 @@ namespace NUG.Tests
     [Test]
     public void AddsArgs()
     {
-      Assert.That(_a + _b == _sum);
+      Assert.AreEqual(_sum, _a + _b);
     }
   }
 
@@ -69,7 +69,7 @@ namespace NUG.Tests
     public void IsNaturalNumber()
     {
       var n = CreateNaturalNumber();
-      Assert.That(n > 0);
+      Assert.Greater(n, 0);
     }
   }
 
@@ -89,7 +89,7 @@ namespace NUG.Tests
     [Test]
     public void HasCorrectBaseType()
     {
-      Assert.AreEqual(typeof(TSub).BaseType, typeof(TBase));
+      Assert.AreEqual(typeof(TBase), typeof(TSub).BaseType);
     }
   }
 
@@ -142,7 +142,7 @@ namespace NUG.Tests
     [TestCase(4)]
     public void IsProductNaturalNumber(int a)
     {
-      Assert.That(_n * a > 0);
+      Assert.Greater(_n * a, 0);
     }
   }
 
@@ -160,14 +160,14 @@ namespace NUG.Tests
     [Test]
     public void IsNumberOne()
     {
-      Assert.That(_n == 1);
+      Assert.AreEqual(1, _n);
       _n = 2;
     }
 
     [TearDown]
     public void Teardown()
     {
-      Assert.That(_n == 2);
+      Assert.AreEqual(2, _n);
     }
   }
 
@@ -204,6 +204,17 @@ namespace NUG.Tests
     {
       _n++;
       Assert.AreEqual(2, _n);
+    }
+  }
+
+  [TestFixture]
+  public class TestExpectedResult
+  {
+    [TestCase(ExpectedResult = 23)]
+    public int IsTrue()
+    {
+      Assert.That(true);
+      return 23;
     }
   }
 }
