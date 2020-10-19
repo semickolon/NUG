@@ -6,14 +6,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using NUnit.Framework.Internal;
 
 namespace NUG
 {
   public class TestRunner
   {
     private readonly SceneTree _sceneTree;
-    private readonly Dictionary<MethodInfo, List<object>> _testMethods = new Dictionary<MethodInfo, List<object>>();
+    private readonly Dictionary<MethodInfo, List<TestPayload>> _testMethods = new Dictionary<MethodInfo, List<TestPayload>>();
     private readonly Dictionary<Type, MethodInfo> _setupMethods = new Dictionary<Type, MethodInfo>();
     private readonly Dictionary<Type, MethodInfo> _teardownMethods = new Dictionary<Type, MethodInfo>();
 
@@ -23,22 +22,23 @@ namespace NUG
       ScanAssemblies();
     }
 
-    public async Task Run(Action<TestResult> action)
+    public async Task Run(Action<TestResult> callback)
     {
       foreach (var method in _testMethods.Keys)
       {
-        var testObjects = _testMethods[method]!;
-        foreach (var testObject in testObjects)
+        var testPayloads = _testMethods[method]!;
+        foreach (var testPayload in testPayloads)
         {
-          var testResult = await RunTest(method, testObject);
-          action(testResult);
+          var testResult = await RunTest(method, testPayload);
+          callback(testResult);
         }
       }
     }
 
-    private async Task<TestResult> RunTest(MethodInfo method, object testObject)
+    private async Task<TestResult> RunTest(MethodInfo method, TestPayload testPayload)
     {
       var testResult = new TestResult(method);
+      var testObject = testPayload.TestObject;
       
       try
       {
@@ -50,7 +50,7 @@ namespace NUG
         _setupMethods.TryGetValue(method.DeclaringType, out var setupMethod);
         setupMethod?.Invoke(testObject, new object[] { });
 
-        object obj = method.Invoke(testObject, new object[] { });
+        object obj = method.Invoke(testObject, testPayload.Parameters);
 
         if (obj is IEnumerator coroutine)
         {
@@ -102,20 +102,20 @@ namespace NUG
           if (constructor == null)
             continue; // TODO really?
 
-          object TestObjectCreator() => constructor.Invoke(testFixtureAttr.Arguments);
+          object CreateTestObject() => constructor.Invoke(testFixtureAttr.Arguments);
 
           var methods = concreteType.GetMethods();
           foreach (var method in methods)
           {
-            ScanMethod(concreteType, method, TestObjectCreator);
+            ScanMethod(concreteType, method, CreateTestObject);
           }
         }
       }
     }
 
-    private void ScanMethod(Type type, MethodInfo method, Func<object> testObjectCreator)
+    private void ScanMethod(Type type, MethodInfo method, Func<object> createTestObject)
     {
-      var testAttr = GetCustomAttribute<TestAttribute>(method);
+      var testCaseAttr = GetCustomAttribute<TestCaseAttribute>(method);
       var setupAttr = GetCustomAttribute<SetUpAttribute>(method);
       var teardownAttr = GetCustomAttribute<TearDownAttribute>(method);
 
@@ -127,14 +127,24 @@ namespace NUG
       {
         _teardownMethods[type] = method;
       }
-      else if (testAttr != null)
+      else
       {
+        if (testCaseAttr == null)
+        {
+          var testAttr = GetCustomAttribute<TestAttribute>(method);
+          testCaseAttr = testAttr?.ToTestCaseAttribute();
+        }
+
+        if (testCaseAttr == null || testCaseAttr.Ignore != null)
+          return;
+        
         if (!_testMethods.ContainsKey(method))
         {
-          _testMethods[method] = new List<object>();
+          _testMethods[method] = new List<TestPayload>();
         }
-        
-        _testMethods[method].Add(testObjectCreator());
+
+        var testPayload = new TestPayload(createTestObject(), testCaseAttr.Arguments);
+        _testMethods[method].Add(testPayload);
       }
     }
 
@@ -180,6 +190,40 @@ namespace NUG
     {
       TestMethod = testMethod;
       Exception = exception;
+    }
+  }
+
+  public readonly struct TestPayload
+  {
+    public readonly object TestObject;
+    public readonly object[] Parameters;
+
+    public TestPayload(object testObject, object[] parameters)
+    {
+      TestObject = testObject;
+      Parameters = parameters;
+    }
+  }
+
+  public static class NUnitExtensions
+  {
+    public static TestCaseAttribute ToTestCaseAttribute(this TestAttribute testAttr)
+    {
+      var testCaseAttr = new TestCaseAttribute();
+
+      if (testAttr.Author != null)
+        testCaseAttr.Author = testAttr.Author;
+
+      if (testAttr.Description != null)
+        testCaseAttr.Description = testAttr.Description;
+
+      if (testAttr.ExpectedResult != null)
+        testCaseAttr.ExpectedResult = testAttr.ExpectedResult;
+
+      if (testAttr.TestOf != null)
+        testCaseAttr.TestOf = testAttr.TestOf;
+        
+      return testCaseAttr;
     }
   }
 }

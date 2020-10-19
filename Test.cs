@@ -92,4 +92,26 @@ namespace NUG.Tests
       Assert.AreEqual(typeof(TSub).BaseType, typeof(TBase));
     }
   }
+
+  [TestFixture]
+  public class TestCaseSimple
+  {
+    [TestCase]
+    public void IsTrue()
+    {
+      Assert.That(40 > 20);
+    }
+
+    [TestCase("Foobar", "Qux")]
+    public void DoesNotContainPart(string whole, string part)
+    {
+      Assert.IsFalse(whole.Contains(part));
+    }
+
+    [TestCase(Ignore = "Ignore me")]
+    public void DontRun()
+    {
+      Assert.That(1 == 2);
+    }
+  }
 }
