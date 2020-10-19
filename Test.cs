@@ -82,4 +82,14 @@ namespace NUG.Tests
   {
     protected override int CreateNaturalNumber() => 189322;
   }
+
+  [TestFixture(TypeArgs = new [] { typeof(Godot.Object), typeof(Godot.Reference) })]
+  public class TestGenericFixture<TBase, TSub>
+  {
+    [Test]
+    public void HasCorrectBaseType()
+    {
+      Assert.AreEqual(typeof(TSub).BaseType, typeof(TBase));
+    }
+  }
 }

@@ -9,6 +9,7 @@ namespace NUG.Tests
     public override async void _Ready()
     {
       var testRunner = new TestRunner(GetTree());
+      
       await testRunner.Run(res =>
       {
         if (res.Exception != null)
@@ -20,6 +21,7 @@ namespace NUG.Tests
           GD.Print($"Passed {res.TestMethod.Name}");
         }
       });
+      
       GetTree().Quit();
     }
   }

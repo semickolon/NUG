@@ -92,16 +92,22 @@ namespace NUG
         
         foreach (var testFixtureAttr in testFixtureAttrs)
         {
-          var constructor = FindConstructor(type, testFixtureAttr.Arguments);
+          var concreteType = type;
+          if (type.ContainsGenericParameters)
+          {
+            concreteType = type.MakeGenericType(testFixtureAttr.TypeArgs);
+          }
+          
+          var constructor = TryGetConstructor(concreteType, testFixtureAttr.Arguments);
           if (constructor == null)
             continue; // TODO really?
 
           object TestObjectCreator() => constructor.Invoke(testFixtureAttr.Arguments);
 
-          var methods = type.GetMethods();
+          var methods = concreteType.GetMethods();
           foreach (var method in methods)
           {
-            ScanMethod(type, method, TestObjectCreator);
+            ScanMethod(concreteType, method, TestObjectCreator);
           }
         }
       }
@@ -132,7 +138,7 @@ namespace NUG
       }
     }
 
-    private static ConstructorInfo? FindConstructor(Type type, object[] args)
+    private static ConstructorInfo? TryGetConstructor(Type type, object[] args)
     {
       var argTypes = args
         .Select(arg => arg.GetType())
