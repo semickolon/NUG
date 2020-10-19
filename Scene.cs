@@ -12,13 +12,14 @@ namespace NUG.Tests
       
       await testRunner.Run(res =>
       {
+        var name = $"{res.TestMethod.DeclaringType!.Name}.{res.TestMethod.Name}";
         if (res.Exception != null)
         {
-          GD.Print($"Failed {res.TestMethod.Name} : {res.Exception.Message}");
+          GD.Print($"Failed {name} : {res.Exception.Message}");
         }
         else
         {
-          GD.Print($"Passed {res.TestMethod.Name}");
+          GD.Print($"Passed {name}");
         }
       });
       

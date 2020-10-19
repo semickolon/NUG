@@ -115,7 +115,7 @@ namespace NUG
 
     private void ScanMethod(Type type, MethodInfo method, Func<object> createTestObject)
     {
-      var testCaseAttr = GetCustomAttribute<TestCaseAttribute>(method);
+      var testCaseAttrs = GetCustomAttributes<TestCaseAttribute>(method).ToList();
       var setupAttr = GetCustomAttribute<SetUpAttribute>(method);
       var teardownAttr = GetCustomAttribute<TearDownAttribute>(method);
 
@@ -129,22 +129,29 @@ namespace NUG
       }
       else
       {
-        if (testCaseAttr == null)
+        if (testCaseAttrs.Count == 0)
         {
           var testAttr = GetCustomAttribute<TestAttribute>(method);
-          testCaseAttr = testAttr?.ToTestCaseAttribute();
+          var testCaseAttr = testAttr?.ToTestCaseAttribute();
+          if (testCaseAttr != null)
+          {
+            testCaseAttrs.Add(testCaseAttr);
+          }
         }
-
-        if (testCaseAttr == null || testCaseAttr.Ignore != null)
-          return;
         
-        if (!_testMethods.ContainsKey(method))
+        foreach (var testCaseAttr in testCaseAttrs)
         {
-          _testMethods[method] = new List<TestPayload>();
-        }
+          if (testCaseAttr == null || testCaseAttr.Ignore != null)
+            return;
+        
+          if (!_testMethods.ContainsKey(method))
+          {
+            _testMethods[method] = new List<TestPayload>();
+          }
 
-        var testPayload = new TestPayload(createTestObject(), testCaseAttr.Arguments);
-        _testMethods[method].Add(testPayload);
+          var testPayload = new TestPayload(createTestObject(), testCaseAttr.Arguments);
+          _testMethods[method].Add(testPayload);
+        }
       }
     }
 

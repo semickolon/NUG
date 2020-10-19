@@ -102,16 +102,47 @@ namespace NUG.Tests
       Assert.That(40 > 20);
     }
 
+    [TestCase(Ignore = "Ignore me")]
+    public void DontRun()
+    {
+      Assert.That(1 == 2);
+    }
+
     [TestCase("Foobar", "Qux")]
     public void DoesNotContainPart(string whole, string part)
     {
       Assert.IsFalse(whole.Contains(part));
     }
+  }
 
-    [TestCase(Ignore = "Ignore me")]
-    public void DontRun()
+  [TestFixture]
+  public class TestCaseMultiple
+  {
+    [TestCase(0, 1, 0)]
+    [TestCase(-2, 2, -4)]
+    [TestCase(4, 2, 8)]
+    public void IsProductCorrect(int a, int b, int c)
     {
-      Assert.That(1 == 2);
+      Assert.AreEqual(a * b, c);
+    }
+  }
+
+  [TestFixture(1)]
+  [TestFixture(2)]
+  public class TestCaseMultipleFixtureMultiple
+  {
+    private readonly int _n;
+    
+    public TestCaseMultipleFixtureMultiple(int n)
+    {
+      _n = n;
+    }
+      
+    [TestCase(50)]
+    [TestCase(4)]
+    public void IsProductNaturalNumber(int a)
+    {
+      Assert.That(_n * a > 0);
     }
   }
 }
