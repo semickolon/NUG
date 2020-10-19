@@ -13,7 +13,7 @@ namespace NUG
   public class TestRunner
   {
     private readonly SceneTree _sceneTree;
-    private readonly Dictionary<MethodInfo, object> _testMethods = new Dictionary<MethodInfo, object>();
+    private readonly Dictionary<MethodInfo, List<object>> _testMethods = new Dictionary<MethodInfo, List<object>>();
     private readonly Dictionary<Type, MethodInfo> _setupMethods = new Dictionary<Type, MethodInfo>();
     private readonly Dictionary<Type, MethodInfo> _teardownMethods = new Dictionary<Type, MethodInfo>();
 
@@ -27,44 +27,52 @@ namespace NUG
     {
       foreach (var method in _testMethods.Keys)
       {
-        var testObject = _testMethods[method];
-        var testResult = new TestResult(method);
-
-        try
+        var testObjects = _testMethods[method]!;
+        foreach (var testObject in testObjects)
         {
-          if (testObject is Node node)
-          {
-            _sceneTree.Root.AddChild(node);
-          }
-
-          _setupMethods.TryGetValue(method.DeclaringType, out var setupMethod);
-          setupMethod?.Invoke(testObject, new object[] { });
-
-          object obj = method.Invoke(testObject, new object[] { });
-
-          if (obj is IEnumerator coroutine)
-          {
-            while (coroutine.MoveNext())
-            {
-              await Task.Delay(10);
-            }
-          }
+          var testResult = await RunTest(method, testObject);
+          action(testResult);
         }
-        catch (Exception e)
-        {
-          testResult = new TestResult(method, e.InnerException ?? e);
-        }
-        finally
-        {
-          _teardownMethods.TryGetValue(method.DeclaringType, out var teardownMethod);
-          teardownMethod?.Invoke(testObject, new object[] { });
-
-          (testObject as Node)?.QueueFree();
-        }
-
-        action(testResult);
-        await Task.Delay(1);
       }
+    }
+
+    private async Task<TestResult> RunTest(MethodInfo method, object testObject)
+    {
+      var testResult = new TestResult(method);
+      
+      try
+      {
+        if (testObject is Node node)
+        {
+          _sceneTree.Root.AddChild(node);
+        }
+
+        _setupMethods.TryGetValue(method.DeclaringType, out var setupMethod);
+        setupMethod?.Invoke(testObject, new object[] { });
+
+        object obj = method.Invoke(testObject, new object[] { });
+
+        if (obj is IEnumerator coroutine)
+        {
+          while (coroutine.MoveNext())
+          {
+            await Task.Delay(10);
+          }
+        }
+      }
+      catch (Exception e)
+      {
+        testResult = new TestResult(method, e.InnerException ?? e);
+      }
+      finally
+      {
+        _teardownMethods.TryGetValue(method.DeclaringType, out var teardownMethod);
+        teardownMethod?.Invoke(testObject, new object[] { });
+
+        (testObject as Node)?.QueueFree();
+      }
+
+      return testResult;
     }
 
     private void ScanAssemblies()
@@ -80,20 +88,21 @@ namespace NUG
     {
       foreach (var type in types)
       {
-        var testFixtureAttr = GetCustomAttribute<TestFixtureAttribute>(type);
-        if (testFixtureAttr == null)
-          continue;
-
-        var constructor = FindConstructor(type, testFixtureAttr.Arguments);
-        if (constructor == null)
-          continue; // TODO really?
-
-        object TestObjectCreator() => constructor.Invoke(testFixtureAttr.Arguments);
-
-        var methods = type.GetMethods();
-        foreach (var method in methods)
+        var testFixtureAttrs = GetCustomAttributes<TestFixtureAttribute>(type);
+        
+        foreach (var testFixtureAttr in testFixtureAttrs)
         {
-          ScanMethod(type, method, TestObjectCreator);
+          var constructor = FindConstructor(type, testFixtureAttr.Arguments);
+          if (constructor == null)
+            continue; // TODO really?
+
+          object TestObjectCreator() => constructor.Invoke(testFixtureAttr.Arguments);
+
+          var methods = type.GetMethods();
+          foreach (var method in methods)
+          {
+            ScanMethod(type, method, TestObjectCreator);
+          }
         }
       }
     }
@@ -114,11 +123,16 @@ namespace NUG
       }
       else if (testAttr != null)
       {
-        _testMethods[method] = testObjectCreator();
+        if (!_testMethods.ContainsKey(method))
+        {
+          _testMethods[method] = new List<object>();
+        }
+        
+        _testMethods[method].Add(testObjectCreator());
       }
     }
 
-    private ConstructorInfo? FindConstructor(Type type, object[] args)
+    private static ConstructorInfo? FindConstructor(Type type, object[] args)
     {
       var argTypes = args
         .Select(arg => arg.GetType())
@@ -136,10 +150,15 @@ namespace NUG
 
       return null;
     }
-
+    
     private static T? GetCustomAttribute<T>(MemberInfo type) where T : Attribute
     {
       return Attribute.GetCustomAttribute(type, typeof(T), false) as T;
+    }
+    
+    private static T[] GetCustomAttributes<T>(MemberInfo type) where T : Attribute
+    {
+      return (T[]) Attribute.GetCustomAttributes(type, typeof(T), false);
     }
   }
 
@@ -153,8 +172,8 @@ namespace NUG
 
     public TestResult(MethodInfo testMethod, Exception? exception = null)
     {
-      this.TestMethod = testMethod;
-      this.Exception = exception;
+      TestMethod = testMethod;
+      Exception = exception;
     }
   }
 }
