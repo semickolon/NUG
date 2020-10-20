@@ -117,8 +117,7 @@ namespace NUG
           
           foreach (var method in concreteType.GetMethods())
           {
-            var testCase = ScanMethod(context, method);
-            testCase?.With(x => testCases.Add(x));
+            testCases.AddRange(ScanMethod(context, method));
           }
 
           if (testCases.Count == 0)
@@ -130,8 +129,10 @@ namespace NUG
       }
     }
 
-    private TestCase? ScanMethod(TestContext context, MethodInfo method)
+    private List<TestCase> ScanMethod(TestContext context, MethodInfo method)
     {
+      var testCases = new List<TestCase>();
+      
       if (HasCustomAttribute<SetUpAttribute>(method))
       {
         _setupMethods.AddMethod(context, method);
@@ -165,17 +166,25 @@ namespace NUG
         foreach (var testCaseAttr in testCaseAttrs)
         {
           if (testCaseAttr == null || testCaseAttr.Ignore != null || testCaseAttr.IgnoreReason != null)
-            return null;
+            continue;
 
+          var ignoreAttr = GetCustomAttribute<IgnoreAttribute>(method);
+          if (ignoreAttr != null)
+          {
+            var ignoreUntil = ignoreAttr.Until?.Map(DateTime.Parse);
+            if (ignoreUntil == null || DateTime.Now < ignoreUntil)
+              continue;
+          }
+          
           var orderAttr = GetCustomAttribute<OrderAttribute>(method);
           var order = orderAttr?.Order ?? int.MaxValue;
           
           var testCase = new TestCase(method, testCaseAttr.Arguments, testCaseAttr.ExpectedResult, order);
-          return testCase;
+          testCases.Add(testCase);
         }
       }
 
-      return null;
+      return testCases;
     }
 
     private static ConstructorInfo? FindConstructor(Type type, object[] args)

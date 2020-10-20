@@ -8,5 +8,10 @@ namespace NUG.Internal
     {
       action(t);
     }
+    
+    public static R Map<T, R>(this T t, Func<T, R> func)
+    {
+      return func(t);
+    }
   }
 }
