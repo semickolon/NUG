@@ -12,9 +12,14 @@ namespace NUG.Tests
       {
         var name = $"{res.TestMethod.DeclaringType!.Name}.{res.TestMethod.Name}";
         if (res.Exception != null)
+        {
           GD.PrintErr($"Failed {name}\n{res.Exception.Message}");
+          throw res.Exception;
+        }
         else
+        {
           GD.Print($"Passed {name}");
+        }
       });
 
       GetTree().Quit();

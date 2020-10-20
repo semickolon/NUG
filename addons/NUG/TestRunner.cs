@@ -175,12 +175,15 @@ namespace NUG
             if (ignoreUntil == null || DateTime.Now < ignoreUntil)
               continue;
           }
-          
-          var orderAttr = GetCustomAttribute<OrderAttribute>(method);
-          var order = orderAttr?.Order ?? int.MaxValue;
-          
-          var testCase = new TestCase(method, testCaseAttr.Arguments, testCaseAttr.ExpectedResult, order);
-          testCases.Add(testCase);
+
+          var repeatCount = GetCustomAttribute<RepeatAttribute>(method)?.GetCount() ?? 1;
+          var order = GetCustomAttribute<OrderAttribute>(method)?.Order ?? int.MaxValue;
+
+          for (var i = 0; i < repeatCount; i++)
+          {
+            var testCase = new TestCase(method, testCaseAttr.Arguments, testCaseAttr.ExpectedResult, order);
+            testCases.Add(testCase);
+          }
         }
       }
 
