@@ -109,12 +109,10 @@ namespace NUG
             concreteType = type.MakeGenericType(testFixtureAttr.TypeArgs);
           }
           
-          var constructor = TryGetConstructor(concreteType, testFixtureAttr.Arguments);
-          if (constructor == null)
-            continue; // TODO really?
+          var constructor = FindConstructor(concreteType, testFixtureAttr.Arguments);
+          object CreateTestObject() => constructor!.Invoke(testFixtureAttr.Arguments);
 
           var testCases = new List<TestCase>();
-          object CreateTestObject() => constructor.Invoke(testFixtureAttr.Arguments);
           var context = new TestContext(concreteType, CreateTestObject);
           
           foreach (var method in concreteType.GetMethods())
@@ -180,7 +178,7 @@ namespace NUG
       return null;
     }
 
-    private static ConstructorInfo? TryGetConstructor(Type type, object[] args)
+    private static ConstructorInfo? FindConstructor(Type type, object[] args)
     {
       var argTypes = args
         .Select(arg => arg.GetType())
